@@ -74,7 +74,8 @@ async function signIn() {
 // টাইম রেকর্ড ফাংশন (সংশোধিত)
 async function time() {
     let date = new Date();
-    let timeString = date.toLocaleString(); // আরও সহজ ফরম্যাট
+    // toLocaleString এর বদলে toISOString ব্যবহার করুন
+    let timeString = date.toISOString(); 
     let userAcc = localStorage.getItem('userAcc');
 
     if (!userAcc) {
@@ -82,59 +83,56 @@ async function time() {
         return;
     }
 
-    // এখানে .insert() এর বদলে .update() ব্যবহার করা হয়েছে
     const { data, error } = await supabaseClient
         .from('atto')
-        .update({ time: timeString }) // 'time' কলাম আপডেট হবে
-        .eq('acc', userAcc);          // যেখানে 'acc' মিলে যাবে
+        .update({ time: timeString })
+        .eq('acc', userAcc);
 
     if (error) {
         alert('Error: ' + error.message);
-        console.error(error); 
     } else {
-        alert('Time recorded successfully!');
+        alert('Timer started!');
     }
 }
 
+// সময় দেখানোর ফাংশন (সংশোধিত)
 async function show() {
     let userAcc = localStorage.getItem('userAcc');
-
-    if (!userAcc) {
-        console.warn('User not logged in!'); // Using warn instead of alert to avoid spamming every second
-        return;
-    }
+    if (!userAcc) return;
 
     const { data, error } = await supabaseClient
         .from('atto')
         .select('time')
         .eq('acc', userAcc)
-        .single(); // Use .single() if you only expect one row back
+        .single();
 
-    if (error) {
-        console.error('Error:', error.message);
-    } else if (data) {
-        let pastDate = new Date(data.time); 
-        let now = new Date();
+    if (error || !data || !data.time) {
+        return;
+    }
 
-        // Calculate difference in milliseconds
-        let diffInMs = now - pastDate;
+    let pastDate = new Date(data.time); 
+    let now = new Date();
 
-        // Convert to seconds (or whatever unit you need)
-        let diffInSeconds = Math.floor(diffInMs / 1000);
-        let diffInMinutes = Math.floor(diffInSeconds / 60);
-        let diffInHours = Math.floor(diffInMinutes / 60);
-        let diffInDays = Math.floor(diffInHours / 24);
+    let diffInMs = now - pastDate;
 
-        if (diffInDays > 0) {
-            document.getElementById('time').innerText = diffInDays + " day";
-        } else if (diffInHours > 0) {
-            document.getElementById('time').innerText = diffInHours + " hour";
-        } else if (diffInMinutes > 0) {
-            document.getElementById('time').innerText = diffInMinutes + " minute";
-        } else {
-            document.getElementById('time').innerText = diffInSeconds + " second";
-        }
+    // যদি সময় ভবিষ্যতে চলে যায় (ভুলবশত), তবে ০ দেখাবে
+    if (diffInMs < 0) diffInMs = 0;
+
+    let diffInSeconds = Math.floor(diffInMs / 1000);
+    let diffInMinutes = Math.floor(diffInSeconds / 60);
+    let diffInHours = Math.floor(diffInMinutes / 60);
+    let diffInDays = Math.floor(diffInHours / 24);
+
+    let displayElement = document.getElementById('time');
+
+    if (diffInDays > 0) {
+        displayElement.innerText = diffInDays + " day " + (diffInHours % 24) + " hour";
+    } else if (diffInHours > 0) {
+        displayElement.innerText = diffInHours + " hour " + (diffInMinutes % 60) + " minute";
+    } else if (diffInMinutes > 0) {
+        displayElement.innerText = diffInMinutes + " minute " + (diffInSeconds % 60) + " second";
+    } else {
+        displayElement.innerText = diffInSeconds + " second";
     }
 }
-
 setInterval(show, 1000);
