@@ -4,7 +4,46 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 // ভেরিয়েবলের নাম 'supabaseClient' রাখা হয়েছে যাতে CDN এর সাথে কনফ্লিক্ট না হয়
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey)
+// সাইন আপ ফাংশন
+async function signUp() {
+    let email = document.querySelector('.input-email').value;
+    let password = document.querySelector('.input-password').value;
+    
+    if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    // Check if account already exists
+    const { data: existingData, error: checkError } = await supabaseClient
+        .from('atto')
+        .select('*')
+        .eq('acc', email + ':' + password);
 
+    if (checkError) {
+        alert('Error: ' + checkError.message);
+        return;
+    }
+
+    if (existingData && existingData.length > 0) {
+        alert('Account already exists with this email!');
+        return;
+    }
+
+    // Insert new user record
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .insert([{ acc: email + ':' + password }]);
+
+    if (error) {
+        alert('Error creating account: ' + error.message);
+    } else {
+        // Save to localStorage
+        localStorage.setItem('userAcc', email + ':' + password);
+        alert('Sign up successful!');
+        window.location.href = 'time.html';
+    }
+}
 // সাইন ইন ফাংশন (localStorage সেটআপ ঠিক করা হয়েছে)
 async function signIn() {
     let email = document.querySelector('.input-email1').value;
