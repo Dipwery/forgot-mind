@@ -127,6 +127,10 @@ async function show() {
 
     if (diffInDays > 0) {
         displayElement.innerText = diffInDays + " day " + (diffInHours % 24) + " hour";
+        const { data, error } = await supabaseClient
+            .from('atto')
+            .update({ day: diffInDays })
+            .eq('acc', userAcc);
     } else if (diffInHours > 0) {
         displayElement.innerText = diffInHours + " hour " + (diffInMinutes % 60) + " minute";
     } else if (diffInMinutes > 0) {
@@ -136,3 +140,39 @@ async function show() {
     }
 }
 setInterval(show, 1000);
+
+async function coin() {   
+    let userAcc = localStorage.getItem('userAcc');
+    if (!userAcc) {
+        alert('User not logged in!');
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .select('day, coin')
+        .eq('acc', userAcc)
+        .single();
+
+    if (error || !data) {
+        alert('Error fetching data: ' + (error ? error.message : 'No data found'));
+        return;
+    }
+
+    let day = data.day || 0;
+    let cc = data.coin || 0;
+    let newCoinGain = day / 900;
+
+    document.getElementById('coin-count').innerText = "🪙" + data.coin.toFixed(2) + "pori";
+
+    const { error: coinUpdateError } = await supabaseClient
+        .from('atto')
+        .update({ coin: cc + newCoinGain })
+        .eq('acc', userAcc);
+
+    if (coinUpdateError) {
+        console.error('Update failed:', coinUpdateError.message);
+    }
+}
+
+setInterval(coin, 1000);
