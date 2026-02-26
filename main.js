@@ -127,7 +127,7 @@ async function show() {
 
     if (diffInDays > 0) {
         displayElement.innerText = diffInDays + " day " + (diffInHours % 24) + " hour";
-        const { data, error } = await supabaseClient
+        const { error: updateError } = await supabaseClient
             .from('atto')
             .update({ day: diffInDays })
             .eq('acc', userAcc);
@@ -161,9 +161,9 @@ async function coin() {
 
     let day = data.day || 0;
     let cc = data.coin || 0;
-    let newCoinGain = day / 900;
+    let newCoinGain = day /4;
 
-    document.getElementById('coin-count').innerText = "🪙" + data.coin.toFixed(2) + "pori";
+    document.getElementById('coin-count').innerText = "🪙" + cc.toFixed(2) + " pori";
 
     const { error: coinUpdateError } = await supabaseClient
         .from('atto')
