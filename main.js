@@ -148,6 +148,24 @@ async function coin() {
         return;
     }
 
+    // আজকের তারিখ (YYYY-MM-DD ফরম্যাটে)
+    let today = new Date().toISOString().split('T')[0];
+    let lastCoinUpdate = localStorage.getItem('lastCoinUpdate');
+
+    // যদি coin আজ ইতিমধ্যে আপডেট হয়ে থাকে, তবে শুধু দেখান
+    if (lastCoinUpdate === today) {
+        const { data, error } = await supabaseClient
+            .from('atto')
+            .select('coin')
+            .eq('acc', userAcc)
+            .single();
+
+        if (data && data.coin !== undefined) {
+            document.getElementById('coin-count').innerText = "🪙" + data.coin.toFixed(2) + " pori";
+        }
+        return;
+    }
+
     const { data, error } = await supabaseClient
         .from('atto')
         .select('day, coin')
@@ -155,15 +173,15 @@ async function coin() {
         .single();
 
     if (error || !data) {
-        alert('Error fetching data: ' + (error ? error.message : 'No data found'));
+        console.error('Error fetching data: ' + (error ? error.message : 'No data found'));
         return;
     }
 
     let day = data.day || 0;
     let cc = data.coin || 0;
-    let newCoinGain = day /4;
+    let newCoinGain = day / 4;
 
-    document.getElementById('coin-count').innerText = "🪙" + cc.toFixed(2) + " pori";
+    document.getElementById('coin-count').innerText = "🪙" + (cc + newCoinGain).toFixed(2) + " pori";
 
     const { error: coinUpdateError } = await supabaseClient
         .from('atto')
@@ -172,6 +190,9 @@ async function coin() {
 
     if (coinUpdateError) {
         console.error('Update failed:', coinUpdateError.message);
+    } else {
+        // আজ coin আপডেট হয়েছে তা রেকর্ড করুন
+        localStorage.setItem('lastCoinUpdate', today);
     }
 }
 
