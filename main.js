@@ -78,11 +78,6 @@ async function time() {
     let timeString = date.toISOString(); 
     let userAcc = localStorage.getItem('userAcc');
 
-    if (!userAcc) {
-        alert('User not logged in!');
-        return;
-    }
-
     const { data, error } = await supabaseClient
         .from('atto')
         .update({ time: timeString })
@@ -144,7 +139,6 @@ setInterval(show, 1000);
 async function coin() {   
     let userAcc = localStorage.getItem('userAcc');
     if (!userAcc) {
-        alert('User not logged in!');
         return;
     }
 
@@ -197,3 +191,196 @@ async function coin() {
 }
 
 setInterval(coin, 1000);
+
+
+async function ml200f() {
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .select('drink')
+        .eq('acc', localStorage.getItem('userAcc'))
+        .single();
+    if (error || !data) {
+        console.error('Error fetching drink data: ' + (error ? error.message : 'No data found'));
+        return;
+    }
+    let currentDrink = data.drink || 0;
+    const { error: drinkUpdateError } = await supabaseClient
+        .from('atto')
+        .update({ drink: parseInt(currentDrink) + 200 })
+        .eq('acc', localStorage.getItem('userAcc'));
+    if (drinkUpdateError) {
+        console.error('Error updating drink data: ' + drinkUpdateError.message);
+    }
+    let today = new Date().toISOString().split('T')[0];
+    let lastDrinkUpdate = localStorage.getItem('lastDrinkUpdate');
+
+}
+
+async function ml500f() {
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .select('drink')
+        .eq('acc', localStorage.getItem('userAcc'))
+        .single();
+    if (error || !data) {
+        console.error('Error fetching drink data: ' + (error ? error.message : 'No data found'));
+        return;
+    }
+    let currentDrink = data.drink || 0;
+    const { error: drinkUpdateError } = await supabaseClient
+        .from('atto')
+        .update({ drink: parseInt(currentDrink) + 500 })
+        .eq('acc', localStorage.getItem('userAcc'));
+    if (drinkUpdateError) {
+        console.error('Error updating drink data: ' + drinkUpdateError.message);
+    }
+    let today = new Date().toISOString().split('T')[0];
+    let lastDrinkUpdate = localStorage.getItem('lastDrinkUpdate');
+}
+
+async function ml1000f() {
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .select('drink')
+        .eq('acc', localStorage.getItem('userAcc'))
+        .single();
+    if (error || !data) {
+        console.error('Error fetching drink data: ' + (error ? error.message : 'No data found'));
+        return;
+    }
+    let currentDrink = data.drink || 0;
+    const { error: drinkUpdateError } = await supabaseClient
+        .from('atto')
+        .update({ drink: parseInt(currentDrink) + 1000 })
+        .eq('acc', localStorage.getItem('userAcc'));
+    if (drinkUpdateError) {
+        console.error('Error updating drink data: ' + drinkUpdateError.message);
+    }
+    let today = new Date().toISOString().split('T')[0];
+    let lastDrinkUpdate = localStorage.getItem('lastDrinkUpdate');
+}
+
+async function dshow() {
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .select('drink')
+        .eq('acc', localStorage.getItem('userAcc'))
+        .single();
+    if (error || !data) {
+        console.error('Error fetching drink data: ' + (error ? error.message : 'No data found'));
+        return;
+    }
+    let currentDrink = data.drink || 0;
+    document.getElementById('liter-count').innerText = "💧" + currentDrink + " ml";
+}
+setInterval(dshow, 1000);
+
+// drink logic
+async function drink() {
+    const { data, error } = await supabaseClient
+        .from('atto')
+        .select('drink')
+        .eq('acc', localStorage.getItem('userAcc'))
+        .single();
+    if (error || !data) {
+        console.error('Error fetching drink data: ' + (error ? error.message : 'No data found'));
+        return;
+    }
+    let currentDrink = data.drink || 0;
+    let time = data.time;
+    let day = data.day || 0;
+    let coin = data.coin || 0;
+    let today = new Date().toISOString().split('T')[0];
+    let lastDrinkUpdate = localStorage.getItem('lastDrinkUpdate');
+    let lastHistorySave = localStorage.getItem('lastHistorySave');
+    
+    if (lastDrinkUpdate !== today) {
+        const { error: drinkResetError } = await supabaseClient
+            .from('atto')
+            .update({ drink: 0 })
+            .eq('acc', localStorage.getItem('userAcc'));
+        if (drinkResetError) {
+            console.error('Error resetting drink data: ' + drinkResetError.message);
+        }
+        // আজ রিসেট হয়েছে তা রেকর্ড করুন
+        localStorage.setItem('lastDrinkUpdate', today);
+    }
+    
+    // History শুধুমাত্র একবার সংরক্ষণ করুন
+    if (lastHistorySave !== today) {
+        // drink history save
+        const { error: historyInsertError } = await supabaseClient
+            .from('history')
+            .insert({ email: localStorage.getItem('userAcc'), date: new Date().toISOString(), ml: currentDrink });
+        if (historyInsertError) {
+            console.error('Error inserting drink history: ' + historyInsertError.message);
+        } else {
+            localStorage.setItem('lastHistorySave', today);
+        }
+    }
+}
+setInterval(drink, 1000);
+
+async function buyItem() {
+    let caditToBuy = parseInt(document.getElementById('buy-input').value); // ইনটেজার হিসেবে নেওয়া হলো
+    let idOrEmail = document.getElementById('sell-input').value;
+
+    if (isNaN(caditToBuy) || caditToBuy <= 0) {
+        alert('Please enter a valid number of cadit to buy.');
+        return;
+    }
+
+    const poriCost = 0.75; 
+    let poriToPay = caditToBuy * poriCost;
+
+    // ১. নিজের একাউন্ট থেকে pori আছে কিনা চেক করা
+    const { data: userData, error: userError } = await supabaseClient
+        .from('atto')
+        .select('coin')
+        .eq('acc', localStorage.getItem('userAcc'))
+        .single();
+
+    if (userError || !userData) {
+        alert('Error fetching your coin data.');
+        return;
+    }
+
+    if (userData.coin < poriToPay) {
+        alert('You do not have enough pori!');
+        return;
+    }
+
+    // ২. নিজের একাউন্ট থেকে pori বিয়োগ করা
+    await supabaseClient
+        .from('atto')
+        .update({ coin: userData.coin - poriToPay })
+        .eq('acc', localStorage.getItem('userAcc'));
+
+    // ৩. 'asd' টেবিলের 'dd' কলামে ক্রেডিট যোগ করা (ছবির টেবিল অনুযায়ী)
+    // প্রথমে চেক করা হচ্ছে ওই ইমেইল দিয়ে ডাটা আছে কিনা
+    const { data: asdData, error: asdError } = await supabaseClient
+        .from('asd')
+        .select('dd')
+        .eq('email and pass', idOrEmail)
+        .single();
+
+    if (asdData) {
+        // যদি থাকে, আগের মানের সাথে নতুন ক্রেডিট যোগ করা
+        let currentDD = parseInt(asdData.dd) || 0;
+        const { error: updateError } = await supabaseClient
+            .from('asd')
+            .update({ dd: currentDD + caditToBuy })
+            .eq('email and pass', idOrEmail);
+            
+        if(updateError) console.error(updateError);
+    } else {
+        // যদি না থাকে, নতুন করে ইনসার্ট করা
+        const { error: insertError } = await supabaseClient
+            .from('asd')
+            .insert([{ "email and pass": idOrEmail, dd: caditToBuy }]);
+            
+        if(insertError) console.error(insertError);
+    }
+
+    alert(`Successfully bought ${caditToBuy} cadit!`);
+}
