@@ -279,7 +279,7 @@ setInterval(dshow, 1000);
 async function drink() {
     const { data, error } = await supabaseClient
         .from('atto')
-        .select('drink')
+        .select('drink, coin')
         .eq('acc', localStorage.getItem('userAcc'))
         .single();
     if (error || !data) {
@@ -287,14 +287,42 @@ async function drink() {
         return;
     }
     let currentDrink = data.drink || 0;
-    let time = data.time;
-    let day = data.day || 0;
     let coin = data.coin || 0;
     let today = new Date().toISOString().split('T')[0];
     let lastDrinkUpdate = localStorage.getItem('lastDrinkUpdate');
     let lastHistorySave = localStorage.getItem('lastHistorySave');
+    let lastCoinBonus = localStorage.getItem('lastCoinBonus');
     
     if (lastDrinkUpdate !== today) {
+        // History শুধুমাত্র একবার সংরক্ষণ করুন
+        if (lastHistorySave !== today) {
+            // drink history save
+            const { error: historyInsertError } = await supabaseClient
+                .from('history')
+                .insert({ email: localStorage.getItem('userAcc'), date: new Date().toISOString(), ml: currentDrink });
+            if (historyInsertError) {
+                console.error('Error inserting drink history: ' + historyInsertError.message);
+            } else {
+                localStorage.setItem('lastHistorySave', today);
+            }
+        }
+        
+        // যদি গতকাল 6 লিটার বা তার বেশি জল পান করেছেন, তাহলে 0.98 কয়েন যোগ করুন
+        if (currentDrink >= 6000 && lastCoinBonus !== today) {
+            const newCoin = coin + 0.98;
+            const { error: coinUpdateError } = await supabaseClient
+                .from('atto')
+                .update({ coin: newCoin })
+                .eq('acc', localStorage.getItem('userAcc'));
+            if (coinUpdateError) {
+                console.error('Error updating coin data: ' + coinUpdateError.message);
+            } else {
+                alert('অভিনন্দন! আপনি 6000 মিলি বা তার বেশি জল পান করেছেন এবং 0.98 পোরি অর্জন করেছেন!');
+                localStorage.setItem('lastCoinBonus', today);
+            }
+        }
+        
+        // রিসেট করা হয়েছে তা রেকর্ড করুন
         const { error: drinkResetError } = await supabaseClient
             .from('atto')
             .update({ drink: 0 })
@@ -302,21 +330,7 @@ async function drink() {
         if (drinkResetError) {
             console.error('Error resetting drink data: ' + drinkResetError.message);
         }
-        // আজ রিসেট হয়েছে তা রেকর্ড করুন
         localStorage.setItem('lastDrinkUpdate', today);
-    }
-    
-    // History শুধুমাত্র একবার সংরক্ষণ করুন
-    if (lastHistorySave !== today) {
-        // drink history save
-        const { error: historyInsertError } = await supabaseClient
-            .from('history')
-            .insert({ email: localStorage.getItem('userAcc'), date: new Date().toISOString(), ml: currentDrink });
-        if (historyInsertError) {
-            console.error('Error inserting drink history: ' + historyInsertError.message);
-        } else {
-            localStorage.setItem('lastHistorySave', today);
-        }
     }
 }
 setInterval(drink, 1000);
